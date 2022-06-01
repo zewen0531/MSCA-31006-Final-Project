@@ -1,4 +1,4 @@
-# MSCA-31006-Final-Project
+# MSCA-31006-Final-Project-Group-3
 
 This project will use the telecommunicaion dataset from kaggle, which contains the eletronic power consumption information from household in Sceaux, France . The project will focus on the prediction of time series data on variables: Global active power, sub_metering_1, sub_metering_2, and sub_metering_3 by various of time series prediction models using R. The meaning of the variables attached below.
 
