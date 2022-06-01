@@ -1,0 +1,57 @@
+```{r}
+library(xts)
+library(tseries)
+library(forecast)
+library("TSA")
+library(imputeTS)
+library(zoo)
+library(fGarch)
+library(DescTools)
+library(dplyr)
+library(TSPred)
+
+```
+
+
+```{r}
+dat <- read.csv('~/Desktop/cleaned_data.csv')
+dat <-dat[-1,]
+```
+
+
+
+
+```{r}
+hist(dat$Total.Active)
+hist(dat$Total.Reactive)
+hist(dat$Total.Voltage)
+```
+
+```{r}
+colnames(dat)[4] <- "Active"
+colnames(dat)[5] <- "Reactive"
+colnames(dat)[6] <- "Intensity"
+colnames(dat)[7] <- "Voltage"
+colnames(dat)[8] <- "Sub_metering_1"
+colnames(dat)[9] <- "Sub_metering_2"
+colnames(dat)[10] <- "Sub_metering_3"
+```
+
+```{r}
+cor(dat[,c(4,5,6,7,8,9,10)])
+```
+
+```{r}
+library(corrplot)
+
+corrplot(cor(dat[,c(4,5,6,7,8,9,10)]),        # Correlation matrix
+         method = "shade", # Correlation plot method
+         type = "full",    # Correlation plot style (also "upper" and "lower")
+         diag = TRUE,      # If TRUE (default), adds the diagonal
+         tl.col = "black", # Labels color
+         bg = "white",     # Background color
+         title = "",       # Main title
+         col = NULL)       # Color palette
+```
+```
+

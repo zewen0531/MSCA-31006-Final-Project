@@ -1,0 +1,316 @@
+---
+title: "ARIMA, SARIMA & ARIMA(xreg)"
+output: html_notebook
+---
+
+```{r}
+dat <- read.csv('cleaned_data.csv')
+dat <- dat[-1, ]
+```
+
+```{r}
+library(tseries)
+plot(dat$Total.Active)
+```
+
+```{r}
+for (i in 1:47){
+  dat$new[i] <- paste(dat[i,2], dat[i,3], sep="-")
+}
+```
+
+```{r}
+library(lubridate)
+library(xts)
+
+dat <- xts(dat[,c(4,5,6,7,8,9,10)], order.by = ym(dat$new))
+```
+
+```{r}
+train_dat <- dat[1:36,]
+test_dat <- dat[37:47,]
+```
+
+
+```{r}
+library(forecast)
+
+arima_mod_active <- auto.arima(train_dat$Total.Active)
+```
+
+```{r}
+library(Metrics)
+
+testfit_active <- forecast(arima_mod_active, h=11)
+```
+
+```{r}
+library(MuMIn)
+
+rmse(as.numeric(testfit_active$mean),test_dat$Total.Active)
+smape(as.numeric(testfit_active$mean),test_dat$Total.Active)
+AICc(arima_mod_active)
+BIC(arima_mod_active)
+plot(testfit_active)
+```
+
+```{r}
+arima_seasonal_active <- arima(train_dat$Total.Active, 
+                      order = c(1,0,0), 
+                      seasonal = list(order = c(1,0,0), period = 12))
+checkresiduals(arima_seasonal_active)
+```
+
+```{r}
+testfit_active_seasonal <- forecast(arima_seasonal_active, h=11)
+
+rmse(as.numeric(testfit_active_seasonal$mean),test_dat$Total.Active)
+smape(as.numeric(testfit_active_seasonal$mean),test_dat$Total.Active)
+AICc(arima_seasonal_active)
+BIC(arima_seasonal_active)
+plot(testfit_active_seasonal)
+```
+
+```{r}
+library(fracdiff)
+
+fracfit_active <- arfima(ts(train_dat$Total.Active))
+tsdisplay(residuals(fracfit_active))
+```
+
+```{r}
+testfit_fracfit_active <- forecast(fracfit_active, h=11)
+
+rmse(as.numeric(testfit_fracfit_active$mean),test_dat$Total.Active)
+smape(as.numeric(testfit_fracfit_active$mean),test_dat$Total.Active)
+AICc(fracfit_active)
+BIC(fracfit_active)
+plot(testfit_fracfit_active)
+```
+
+### Reactive
+
+```{r}
+arima_mod_reactive <- auto.arima(train_dat$Total.Reactive)
+```
+
+```{r}
+testfit_arima_mod_reactive <- forecast(arima_mod_reactive, h=11)
+
+rmse(as.numeric(testfit_arima_mod_reactive$mean),test_dat$Total.Reactive)
+smape(as.numeric(testfit_arima_mod_reactive$mean),test_dat$Total.Reactive)
+
+AICc(arima_mod_reactive)
+BIC(arima_mod_reactive)
+plot(testfit_arima_mod_reactive)
+```
+
+```{r}
+arima_seasonal_reactive <- arima(train_dat$Total.Reactive, 
+                      order = c(1,0,0), 
+                      seasonal = list(order = c(1,0,0), period = 12))
+checkresiduals(arima_seasonal_reactive)
+```
+
+```{r}
+testfit_reactive_seasonal <- forecast(arima_seasonal_reactive, h=11)
+
+rmse(as.numeric(testfit_reactive_seasonal$mean),test_dat$Total.Reactive)
+smape(as.numeric(testfit_reactive_seasonal$mean),test_dat$Total.Reactive)
+AICc(arima_seasonal_reactive)
+BIC(arima_seasonal_reactive)
+plot(testfit_reactive_seasonal)
+```
+
+```{r}
+fracfit_reactive <- arfima(ts(train_dat$Total.Reactive))
+tsdisplay(residuals(fracfit_reactive))
+```
+
+```{r}
+testfit_fracfit_reactive <- forecast(fracfit_reactive, h=11)
+
+rmse(as.numeric(testfit_fracfit_reactive$mean),test_dat$Total.Reactive)
+smape(as.numeric(testfit_fracfit_reactive$mean),test_dat$Total.Reactive)
+AICc(fracfit_reactive)
+BIC(fracfit_reactive)
+plot(testfit_fracfit_reactive)
+```
+
+### submetering1
+
+```{r}
+lm_arma_sub1_1 <- auto.arima(train_dat$Total.Sub_metering_1,
+                  xreg=train_dat$Total.Active)
+```
+
+```{r}
+testfit_arma_sub1_1 <- forecast(lm_arma_sub1_1, 
+                                xreg=test_dat$Total.Active)
+
+rmse(as.numeric(testfit_arma_sub1_1$mean),test_dat$Total.Sub_metering_1)
+smape(as.numeric(testfit_arma_sub1_1$mean),test_dat$Total.Sub_metering_1)
+
+AICc(lm_arma_sub1_1)
+BIC(lm_arma_sub1_1)
+plot(testfit_arma_sub1_1)
+```
+
+```{r}
+lm_arma_sub1_2 <- auto.arima(train_dat$Total.Sub_metering_1,
+                  xreg = train_dat$Total.Active+train_dat$Total.Reactive)
+```
+
+```{r}
+testfit_arma_sub1_2 <- forecast(lm_arma_sub1_2, 
+                                xreg=test_dat$Total.Active+test_dat$Total.Reactive)
+
+rmse(as.numeric(testfit_arma_sub1_2$mean),test_dat$Total.Sub_metering_1)
+smape(as.numeric(testfit_arma_sub1_2$mean),test_dat$Total.Sub_metering_1)
+
+AICc(lm_arma_sub1_2)
+BIC(lm_arma_sub1_2)
+plot(testfit_arma_sub1_2)
+```
+
+```{r}
+lm_arma_sub1_3 <- auto.arima(train_dat$Total.Sub_metering_1,
+                  xreg = train_dat$Total.Reactive)
+```
+
+```{r}
+testfit_arma_sub1_3 <- forecast(lm_arma_sub1_3, 
+                                xreg=test_dat$Total.Reactive)
+
+rmse(as.numeric(testfit_arma_sub1_3$mean),test_dat$Total.Sub_metering_1)
+smape(as.numeric(testfit_arma_sub1_3$mean),test_dat$Total.Sub_metering_1)
+
+AICc(lm_arma_sub1_3)
+BIC(lm_arma_sub1_3)
+plot(testfit_arma_sub1_3)
+```
+
+### Submetering2
+
+```{r}
+lm_arma_sub2_1 <- auto.arima(train_dat$Total.Sub_metering_2,
+                  xreg=train_dat$Total.Active)
+```
+
+```{r}
+testfit_arma_sub2_1 <- forecast(lm_arma_sub2_1, 
+                                xreg=test_dat$Total.Active)
+
+rmse(as.numeric(testfit_arma_sub2_1$mean),test_dat$Total.Sub_metering_2)
+smape(as.numeric(testfit_arma_sub2_1$mean),test_dat$Total.Sub_metering_2)
+
+AICc(lm_arma_sub2_1)
+BIC(lm_arma_sub2_1)
+plot(testfit_arma_sub2_1)
+```
+```{r}
+lm_arma_sub2_2 <- auto.arima(train_dat$Total.Sub_metering_2,
+                  xreg = train_dat$Total.Active+train_dat$Total.Reactive)
+```
+
+```{r}
+# lm_arma_sub2_2_season <- arima(train_dat$Total.Sub_metering_2,
+#                   xreg = train_dat$Total.Active+train_dat$Total.Reactive,
+#                   order = c(1,0,1), 
+#                   seasonal = list(order = c(1,0,1), period = 12))
+```
+
+```{r}
+# testfit_arma_sub2_2_season <- forecast(lm_arma_sub2_2_season, 
+#                                 xreg=test_dat$Total.Active+test_dat$Total.Reactive)$mean
+# accuracy(testfit_arma_sub2_2_season,test_dat$Total.Sub_metering_2)
+# AIC(lm_arma_sub2_2_season)
+# BIC(lm_arma_sub2_2_season)
+# plot(testfit_arma_sub2_2_season)
+```
+
+```{r}
+testfit_arma_sub2_2 <- forecast(lm_arma_sub2_2, 
+                                xreg=test_dat$Total.Active+test_dat$Total.Reactive)
+
+rmse(as.numeric(testfit_arma_sub2_2$mean),test_dat$Total.Sub_metering_2)
+smape(as.numeric(testfit_arma_sub2_2$mean),test_dat$Total.Sub_metering_2)
+
+AICc(lm_arma_sub2_2)
+BIC(lm_arma_sub2_2)
+plot(testfit_arma_sub2_2)
+```
+
+```{r}
+lm_arma_sub2_3 <- auto.arima(train_dat$Total.Sub_metering_2,
+                  xreg = train_dat$Total.Reactive)
+```
+
+```{r}
+testfit_arma_sub2_3 <- forecast(lm_arma_sub2_3, 
+                                xreg=test_dat$Total.Reactive)
+
+rmse(as.numeric(testfit_arma_sub2_3$mean),test_dat$Total.Sub_metering_2)
+smape(as.numeric(testfit_arma_sub2_3$mean),test_dat$Total.Sub_metering_2)
+
+AICc(lm_arma_sub2_3)
+BIC(lm_arma_sub2_3)
+plot(testfit_arma_sub2_3)
+```
+
+### Submetering3
+
+```{r}
+lm_arma_sub3_1 <- auto.arima(train_dat$Total.Sub_metering_3,
+                  xreg = train_dat$Total.Active)
+```
+
+```{r}
+testfit_arma_sub3_1 <- forecast(lm_arma_sub3_1, 
+                                xreg=test_dat$Total.Active)
+
+rmse(as.numeric(testfit_arma_sub3_1$mean),test_dat$Total.Sub_metering_3)
+smape(as.numeric(testfit_arma_sub3_1$mean),test_dat$Total.Sub_metering_3)
+
+AICc(lm_arma_sub3_1)
+BIC(lm_arma_sub3_1)
+plot(testfit_arma_sub3_1)
+```
+
+
+```{r}
+lm_arma_sub3_2 <- auto.arima(train_dat$Total.Sub_metering_3,
+                  xreg = train_dat$Total.Active+train_dat$Total.Reactive)
+```
+
+```{r}
+testfit_arma_sub3_2 <- forecast(lm_arma_sub3_2, 
+                                xreg=test_dat$Total.Active+test_dat$Total.Reactive)
+
+rmse(as.numeric(testfit_arma_sub3_2$mean),test_dat$Total.Sub_metering_3)
+smape(as.numeric(testfit_arma_sub3_2$mean),test_dat$Total.Sub_metering_3)
+
+AICc(lm_arma_sub3_2)
+BIC(lm_arma_sub3_2)
+plot(testfit_arma_sub3_2)
+```
+
+
+```{r}
+lm_arma_sub3_3 <- auto.arima(train_dat$Total.Sub_metering_3,
+                  xreg = train_dat$Total.Reactive)
+```
+
+```{r}
+testfit_arma_sub3_3 <- forecast(lm_arma_sub3_3, 
+                                xreg=test_dat$Total.Reactive)
+
+rmse(as.numeric(testfit_arma_sub3_3$mean),test_dat$Total.Sub_metering_3)
+smape(as.numeric(testfit_arma_sub3_3$mean),test_dat$Total.Sub_metering_3)
+
+AICc(lm_arma_sub3_3)
+BIC(lm_arma_sub3_3)
+plot(testfit_arma_sub3_3)
+```
+
+

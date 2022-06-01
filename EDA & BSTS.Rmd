@@ -1,0 +1,280 @@
+---
+title: 'MSCA 31006 Final Project '
+author: "Zewen Li, Jingyi Xie, Jessie Chen, Vanessa Li"
+geometry: margin=1in
+output:
+  html_document:
+    df_print: paged
+  fig_height: 3.5
+  fig_width: 5
+  pdf_document: default
+subtitle: Due on 
+fontsize: 11pt
+---
+
+\vspace{0.5cm}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+dat <- read.delim("/Users/apple/Desktop/MSCA 31006/Final Project/household_power_consumption.txt", sep = ";")
+head(dat)
+```
+```{r}
+dat['Year'] <- format(as.Date(dat$Date, format="%d/%m/%Y"),"%Y")
+```
+
+```{r}
+dat['Month'] <- format(as.Date(dat$Date, format="%d/%m/%Y"),"%m")
+```
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+dat <- na.omit(dat)
+```
+
+
+```{r}
+data <- dat %>%
+  group_by(Year, Month) %>%
+  summarise(Total.Active = sum(as.numeric(Global_active_power)), Total.Reactive = sum(as.numeric(Global_reactive_power)), Total.Intensity = sum(as.numeric(Global_intensity)),Total.Voltage = sum(as.numeric(Voltage)), Total.Sub_metering_1 = sum(as.numeric(Sub_metering_1)), Total.Sub_metering_2 = sum(as.numeric(Sub_metering_2)), Total.Sub_metering_3 = sum(as.numeric(Sub_metering_3)))
+```
+
+```{r}
+data = data[-1,]
+```
+
+```{r}
+head(data)
+```
+```{r}
+write.csv(data,"/Users/apple/Desktop/MSCA 31006/Final Project/cleaned_data.csv")
+```
+
+
+```{r}
+cor(data[,c(3,4,5,6,7,8,9)])
+```
+
+```{r}
+cor.test(data$Total.Active,data$Total.Sub_metering_1)
+```
+
+```{r}
+cor.test(data$Total.Active,data$Total.Sub_metering_1)
+```
+
+```{r}
+cor.test(data$Total.Active,data$Total.Sub_metering_2)
+```
+
+```{r}
+cor.test(data$Total.Active,data$Total.Sub_metering_3)
+```
+
+```{r}
+cor.test(data$Total.Active,data$Total.Reactive)
+```
+
+
+
+```{r}
+library(TSA)
+```
+
+```{r}
+p <- periodogram(data$Total.Active)
+```
+
+```{r}
+1/p$freq[which.max(p$spec)]
+```
+
+```{r}
+p <- periodogram(data$Total.Sub_metering_3)
+1/p$freq[which.max(p$spec)]
+```
+
+
+
+```{r}
+data.ts <- ts(data$Total.Sub_metering_3,start = 2007,frequency = 12)
+plot(decompose(data.ts))
+```
+
+```{r}
+library(bsts)
+```
+
+```{r}
+train <- head(data, -11)
+test <- tail(data,11)
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Active)
+model1 <- bsts(train$Total.Active,
+               state.specification = ss,
+               niter = 500)
+summary(model1)
+```
+
+```{r}
+preds1 <- predict(model1, 11)$mean
+```
+
+```{r}
+library(forecast)
+library(MTS)
+library(Metrics)
+```
+
+```{r}
+forecast::accuracy(test$Total.Active,preds1 )
+```
+```{r}
+smape(test$Total.Active,preds1)
+```
+
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Active)
+ss <- AddSeasonal(ss, train$Total.Active, nseasons = 3, season.duration = 12)
+model2 <- bsts(train$Total.Active,
+               state.specification = ss,
+               niter = 1000)
+summary(model2)
+```
+
+```{r}
+preds2 <- predict(model2, 11)$mean
+forecast::accuracy(test$Total.Active,preds2)
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Active)
+model3 <- bsts(Total.Active ~ Total.Reactive,
+               state.specification = ss,
+               niter = 1000, data = train)
+summary(model3)
+```
+
+```{r}
+preds3 <- predict(model3, newdata = test)$mean
+forecast::accuracy(test$Total.Active,preds3)
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Sub_metering_1)
+model4 <- bsts(Total.Sub_metering_1 ~ Total.Active,
+               state.specification = ss,
+               niter = 1000, data = train)
+preds4 <- predict(model4, newdata = test)$mean
+forecast::accuracy(test$Total.Sub_metering_1,preds4)
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Sub_metering_1)
+model5 <- bsts(Total.Sub_metering_1 ~ Total.Reactive,
+               state.specification = ss,
+               niter = 1000, data = train)
+preds5 <- predict(model5, newdata = test)$mean
+forecast::accuracy(test$Total.Sub_metering_1,preds5)
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Sub_metering_1)
+model6 <- bsts(Total.Sub_metering_1 ~ Total.Reactive+Total.Active,
+               state.specification = ss,
+               niter = 1000, data = train)
+summary(model6)
+```
+
+```{r}
+preds6 <- predict(model6, newdata = test)$mean
+forecast::accuracy(test$Total.Sub_metering_1,preds6)
+```
+
+```{r}
+print(smape(test$Total.Sub_metering_1,preds4))
+print(smape(test$Total.Sub_metering_1,preds5))
+print(smape(test$Total.Sub_metering_1,preds6))
+```
+
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Sub_metering_2)
+model7 <- bsts(Total.Sub_metering_2 ~ Total.Active,
+               state.specification = ss,
+               niter = 1000, data = train)
+preds7 <- predict(model7, newdata = test)$mean
+forecast::accuracy(test$Total.Sub_metering_2,preds7)
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Sub_metering_2)
+model8 <- bsts(Total.Sub_metering_2 ~ Total.Reactive,
+               state.specification = ss,
+               niter = 1000, data = train)
+preds8 <- predict(model8, newdata = test)$mean
+forecast::accuracy(test$Total.Sub_metering_2,preds8)
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Sub_metering_2)
+model9 <- bsts(Total.Sub_metering_2 ~ Total.Reactive+Total.Active,
+               state.specification = ss,
+               niter = 1000, data = train)
+preds9 <- predict(model9, newdata = test)$mean
+forecast::accuracy(test$Total.Sub_metering_2,preds9)
+```
+
+```{r}
+print(smape(test$Total.Sub_metering_1,preds7))
+print(smape(test$Total.Sub_metering_1,preds8))
+print(smape(test$Total.Sub_metering_1,preds9))
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Sub_metering_3)
+model10 <- bsts(Total.Sub_metering_3 ~ Total.Active,
+               state.specification = ss,
+               niter = 100, data = train)
+preds10 <- predict(model10, newdata = test)$mean
+forecast::accuracy(test$Total.Sub_metering_3,preds10)
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Sub_metering_3)
+model11 <- bsts(Total.Sub_metering_3 ~ Total.Reactive,
+               state.specification = ss,
+               niter = 1000, data = train)
+preds11 <- predict(model10, newdata = test)$mean
+forecast::accuracy(test$Total.Sub_metering_3,preds11)
+```
+
+```{r}
+ss <- AddLocalLinearTrend(list(), train$Total.Sub_metering_3)
+model12 <- bsts(Total.Sub_metering_3 ~ Total.Reactive+Total.Active,
+               state.specification = ss,
+               niter = 1000, data = train)
+preds12 <- predict(model10, newdata = test)$mean
+forecast::accuracy(test$Total.Sub_metering_3,preds12)
+```
+
+```{r}
+print(smape(test$Total.Sub_metering_1,preds10))
+print(smape(test$Total.Sub_metering_1,preds11))
+print(smape(test$Total.Sub_metering_1,preds12))
+```
+
+```{r}
+resid(model4)
+```
+
+

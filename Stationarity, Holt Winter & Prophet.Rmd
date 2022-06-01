@@ -1,0 +1,394 @@
+---
+title: 'MSCA 31006 Final Project - Stationarity & Heteroscedasticity Check + Holt Winter & Prophet Model '
+author: "Zewen Li, Jingyi Xie, Jessie Chen, Vanessa Li"
+geometry: margin=1in
+output:
+  html_document:
+    df_print: paged
+  fig_height: 3.5
+  fig_width: 5
+  pdf_document: default
+subtitle: Due on 
+fontsize: 11pt
+---
+
+\vspace{0.5cm}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Import the data
+```{r}
+dat <- read.delim("household_power_consumption.txt", sep = ";")
+head(dat)
+
+#1.date: Date in format dd/mm/yyyy
+#2.time: time in format hh:mm:ss
+#3.global_active_power: household global minute-averaged active power (in kilowatt)
+#4.global_reactive_power: household global minute-averaged reactive power (in kilowatt)
+#5.voltage: minute-averaged voltage (in volt)
+#6.global_intensity: household global minute-averaged current intensity (in ampere)
+#7.sub_metering_1: energy sub-metering No. 1 (in watt-hour of active energy). It corresponds to the kitchen, containing mainly a dishwasher, an oven and a microwave (hot plates are not electric but gas powered).
+#8.sub_metering_2: energy sub-metering No. 2 (in watt-hour of active energy). It corresponds to the laundry room, containing a washing-machine, a tumble-drier, a refrigerator and a light.
+#9.sub_metering_3: energy sub-metering No. 3 (in watt-hour of active energy). It corresponds to an electric water-heater and an air-conditioner.
+```
+
+2. Aggregate the data by month.
+```{r}
+data = na.omit(dat)
+data$Global_active_power = as.numeric(data$Global_active_power)
+data$Global_reactive_power = as.numeric(data$Global_reactive_power)
+data$Voltage = as.numeric(data$Voltage)
+data$Global_intensity= as.numeric(data$Global_intensity)
+data$Sub_metering_1 = as.numeric(data$Sub_metering_1)
+data$Sub_metering_2 = as.numeric(data$Sub_metering_2)
+data$Sub_metering_3 = as.numeric(data$Sub_metering_3)
+
+data["Year"] = format(as.Date(data$Date, format="%d/%m/%Y"),"%Y")
+data["Day"] = format(as.Date(data$Date, format="%d/%m/%Y"),"%d")
+data["Month"] = format(as.Date(data$Date, format="%d/%m/%Y"),"%m")
+
+data = subset(data, select = -c(Day,Date,Time))
+
+gap = aggregate(Global_active_power~Year+Month, data, sum )
+grap = aggregate(Global_reactive_power~Year+Month, data, sum )
+vol = aggregate(Voltage~Year+Month, data, sum )
+gin = aggregate(Global_intensity~Year+Month, data, sum )
+sm1 = aggregate(Sub_metering_1~Year+Month, data, sum )
+sm2 = aggregate(Sub_metering_2~Year+Month, data, sum )
+sm3 = aggregate(Sub_metering_3~Year+Month, data, sum )
+
+
+df = merge(gap,grap, by = c("Year","Month"))
+df = merge(df,vol, by = c("Year","Month"))
+df = merge(df,gin, by = c("Year","Month"))
+df = merge(df,sm1, by = c("Year","Month"))
+df = merge(df,sm2, by = c("Year","Month"))
+df = merge(df,sm3, by = c("Year","Month"))
+
+df
+```
+
+
+3. EDA & Check for Stationarity and Heteroscedasticity
+```{r}
+is.null(df)
+
+summary(df)
+```
+
+
+
+```{r}
+library(forecast)
+# Qualitative Check
+tsdisplay(df$Sub_metering_1)
+tsdisplay(df$Sub_metering_2)
+tsdisplay(df$Sub_metering_3)
+tsdisplay(df$Global_active_power)
+tsdisplay(df$Global_reactive_power)
+tsdisplay(df$Voltage)
+tsdisplay(df$Global_intensity)
+
+# Quantitatively Check
+#kpss test
+library(tseries)
+kpss.test(df$Global_active_power)
+kpss.test(df$Global_reactive_power)
+kpss.test(df$Voltage)
+kpss.test(df$Global_intensity)
+kpss.test(df$Sub_metering_1)
+kpss.test(df$Sub_metering_2)
+kpss.test(df$Sub_metering_3)
+
+adf.test(df$Global_active_power)
+adf.test(df$Global_reactive_power)
+adf.test(df$Voltage)
+adf.test(df$Global_intensity)
+adf.test(df$Sub_metering_1)
+adf.test(df$Sub_metering_2)
+adf.test(df$Sub_metering_3)
+```
+
+Both tests suggest that sub_metering_2 is non-stationary. The tests results are different for Sub_metering_3 and voltage. ADF suggests that they are not stationary, and kpss test suggests that they are stationary. 
+
+
+```{r}
+# Qualitative Check
+tsdisplay(diff(df$Sub_metering_2))
+
+# Quantitatively Check
+#kpss test
+kpss.test(diff(df$Sub_metering_2))
+adf.test(diff(df$Sub_metering_2))
+
+```
+
+```{r}
+df = df[c("Year","Month","Global_active_power","Global_reactive_power",
+          "Sub_metering_1","Sub_metering_2","Sub_metering_3")]
+df = df[-1,]
+```
+
+
+```{r}
+# cor check 
+heatmap(cor(df[,c(3,4,5,6,7)]))
+```
+
+
+
+
+```{r}
+library(lmtest)
+
+model1 = lm(Global_active_power ~ Month+Year, data = df)
+bptest(model1)
+
+model2 = lm(Global_reactive_power ~ Month+Year, data = df)
+bptest(model2)
+
+model3 = lm(Sub_metering_1 ~ Month+Year, data = df)
+bptest(model3)
+
+model4 = lm(Sub_metering_2 ~ Month+Year, data = df)
+bptest(model4)
+
+model5 = lm(Sub_metering_3 ~ Month+Year, data = df)
+bptest(model5)
+
+
+```
+
+No heteroscedasticity is detected.
+
+4. Modeling
+```{r}
+train <- head(df, -11)
+test <- tail(df,11)
+```
+
+
+```{r}
+# Holt Winters
+library(Metrics)
+# Global Active Power
+gap= ts(train$Global_active_power,frequency = 12)
+hwgap <- hw(gap)
+summary(hwgap)
+
+# Sub_Metering_1
+sm1 = ts(train$Sub_metering_1,frequency = 12)
+hwsm1 <- hw(sm1)
+summary(hwsm1)
+
+# Sub_Metering_2
+sm2 = ts(train$Sub_metering_2,frequency = 12)
+hwsm2 <- hw(sm2)
+summary(hwsm2)
+
+# Sub_Metering_3
+sm3 = ts(train$Sub_metering_3,frequency = 12)
+hwsm3 <- hw(sm3)
+summary(hwsm3)
+
+gaps = smape(hwgap$fit,test$Global_active_power)
+sm1s = smape(hwsm1$fit,test$Sub_metering_1)
+sm2s = smape(hwsm2$fit,test$Sub_metering_2)
+sm3s = smape(hwsm3$fit,test$Sub_metering_3)
+
+gapr = rmse(hwgap$fit,test$Global_active_power)
+sm1r = rmse(hwsm1$fit,test$Sub_metering_1)
+sm2r = rmse(hwsm2$fit,test$Sub_metering_2)
+sm3r = rmse(hwsm3$fit,test$Sub_metering_3)
+
+hws = data.frame(gaps,sm1s,sm2s,sm3s)
+hwr = data.frame(gapr,sm1r,sm2r,sm3r)
+colnames(hws) = c("GAP","SM1","SM2","SM3")
+rownames(hws) = "sMAPE of Holt Winters"
+colnames(hwr) = c("GAP","SM1","SM2","SM3")
+rownames(hwr) = "RMSE of Holt Winters"
+hwr
+hws
+
+```
+
+
+```{r}
+# Holt Winters for sub_metering_2 after differencing
+# Sub_Metering_2
+hwsm2d <- hw(diff(sm2,1))
+
+sm2sd = smape(hwsm2d$fit,test$Sub_metering_2)
+
+sm2rd = rmse(hwsm2d$fit,test$Sub_metering_2)
+
+hwsd = data.frame(sm2sd)
+hwrd = data.frame(sm2rd)
+colnames(hwsd) = c("SM2d")
+rownames(hwsd) = "sMAPE of Holt Winters"
+colnames(hwrd) = c("SM2d")
+rownames(hwrd) = "RMSE of Holt Winters"
+hwsd
+hwrd
+```
+
+```{r}
+library(prophet)
+
+for (i in 1:36){
+  df$Date[i] <- paste(df[i,1], df[i,2], "01", sep="-")
+}
+
+train <- head(df, -11)
+test <- tail(df,11)
+
+#SM1
+proh <- prophet()
+pgap =  train[,c(8,3)]
+colnames(pgap) = c("ds","y")
+pgapp <-fit.prophet(proh,pgap)
+summary(pgapp)
+pgappt = test[,c(8,3)]
+colnames(pgappt) = c("ds","y")
+pgapptp <- predict(pgapp,pgappt)$yhat
+
+pgaps = smape(pgapptp,test$Global_active_power)
+pgapr = rmse(pgapptp,test$Global_active_power)
+
+pros = data.frame(pgaps)
+pror = data.frame(pgapr)
+
+rownames(pros) = "sMAPE of Prophet Global_active_power"
+rownames(pror) = "RMSE of Prophet Global_active_power"
+
+pros
+pror
+```
+
+
+```{r}
+#SM1
+proh11 <- add_regressor(proh,'Global_active_power')
+sm11= train[,c(8,5,3)]
+colnames(sm11) = c("ds","y","Global_active_power")
+proh11 <-fit.prophet(proh11,sm11)
+summary(proh11)
+sm11t = test[,c(8,5,3)]
+colnames(sm11t) = c("ds","y","Global_active_power")
+pred11 <- predict(proh11,sm11t)$yhat
+
+proh12 <- add_regressor(proh,'Global_reactive_power')
+sm12= train[,c(8,5,4)]
+colnames(sm12) = c("ds","y","Global_reactive_power")
+proh12 <-fit.prophet(proh12,sm12)
+summary(proh12)
+sm12t= test[,c(8,5,4)]
+colnames(sm12t) = c("ds","y","Global_reactive_power")
+pred12 <- predict(proh12,sm12t)$yhat
+
+proh13 <- add_regressor(proh,'Global_reactive_power')
+proh13 <- add_regressor(proh13,'Global_active_power')
+sm13= train[,c(8,5,4,3)]
+colnames(sm13) = c("ds","y","Global_reactive_power","Global_active_power")
+proh13 <-fit.prophet(proh13,sm13)
+summary(proh13)
+sm13t= test[,c(8,5,4,3)]
+colnames(sm13t) = c("ds","y","Global_reactive_power","Global_active_power")
+pred13 <- predict(proh13,sm13t)$yhat
+
+#SM2
+proh21 <- add_regressor(proh,'Global_active_power')
+sm21= train[,c(8,6,3)]
+colnames(sm21) = c("ds","y","Global_active_power")
+proh21 <-fit.prophet(proh21,sm21)
+summary(proh21)
+sm21t= test[,c(8,6,3)]
+colnames(sm21t) = c("ds","y","Global_active_power")
+pred21 <- predict(proh21,sm21t)$yhat
+
+proh22 <- add_regressor(proh,'Global_reactive_power')
+sm22= train[,c(8,6,4)]
+colnames(sm22) = c("ds","y","Global_reactive_power")
+proh22 <-fit.prophet(proh22,sm22)
+summary(proh22)
+sm22t= test[,c(8,6,4)]
+colnames(sm22t) = c("ds","y","Global_reactive_power")
+pred22 <- predict(proh22,sm22t)$yhat
+
+proh23 <- add_regressor(proh,'Global_reactive_power')
+proh23 <- add_regressor(proh23,'Global_active_power')
+sm23 = train[,c(8,6,4,3)]
+colnames(sm23) = c("ds","y","Global_reactive_power","Global_active_power")
+proh23 <-fit.prophet(proh23,sm23)
+summary(proh23)
+sm23t = test[,c(8,6,4,3)]
+colnames(sm23t) = c("ds","y","Global_reactive_power","Global_active_power")
+pred23 <- predict(proh23,sm23t)$yhat
+
+#SM3
+proh31 <- add_regressor(proh,'Global_active_power')
+sm31= train[,c(8,7,3)]
+colnames(sm31) = c("ds","y","Global_active_power")
+proh31 <-fit.prophet(proh31,sm31)
+summary(proh31)
+sm31t= test[,c(8,7,3)]
+colnames(sm31t) = c("ds","y","Global_active_power")
+pred31 <- predict(proh31,sm31t)$yhat
+
+proh32 <- add_regressor(proh,'Global_reactive_power')
+sm32= train[,c(8,7,4)]
+colnames(sm32) = c("ds","y","Global_reactive_power")
+proh32 <-fit.prophet(proh32,sm32)
+summary(proh32)
+sm32t= test[,c(8,7,4)]
+colnames(sm32t) = c("ds","y","Global_reactive_power")
+pred32 <- predict(proh32,sm32t)$yhat
+
+proh33 <- add_regressor(proh,'Global_reactive_power')
+proh33 <- add_regressor(proh33,'Global_active_power')
+sm33 = train[,c(8,7,4,3)]
+colnames(sm33) = c("ds","y","Global_reactive_power","Global_active_power")
+proh33 <-fit.prophet(proh33,sm33)
+summary(proh33)
+sm33t = test[,c(8,7,4,3)]
+colnames(sm33t) = c("ds","y","Global_reactive_power","Global_active_power")
+pred33 <- predict(proh33,sm33t)$yhat
+```
+
+
+```{r}
+proh11s = smape(pred11,test$Sub_metering_1)
+proh12s = smape(pred12,test$Sub_metering_1)
+proh13s = smape(pred13,test$Sub_metering_1)
+proh21s = smape(pred21,test$Sub_metering_2)
+proh22s = smape(pred22,test$Sub_metering_2)
+proh23s = smape(pred23,test$Sub_metering_2)
+proh31s = smape(pred31,test$Sub_metering_3)
+proh32s = smape(pred32,test$Sub_metering_3)
+proh33s = smape(pred33,test$Sub_metering_3)
+
+
+proh11r = rmse(pred11,test$Sub_metering_1)
+proh12r = rmse(pred12,test$Sub_metering_1)
+proh13r = rmse(pred13,test$Sub_metering_1)
+proh21r = rmse(pred21,test$Sub_metering_2)
+proh22r = rmse(pred22,test$Sub_metering_2)
+proh23r = rmse(pred23,test$Sub_metering_2)
+proh31r = rmse(pred31,test$Sub_metering_3)
+proh32r = rmse(pred32,test$Sub_metering_3)
+proh33r = rmse(pred33,test$Sub_metering_3)
+
+prophets = data.frame(proh11s,proh12s,proh13s,proh21s,proh22s,proh23s,proh31s,proh32s,proh33s)
+prophetr = data.frame(proh11r,proh12r,proh13r,proh21r,proh22r,proh23r,proh31r,proh32r,proh33r)
+
+
+#colnames(prophets) = c("GAP","GRP","SM1","SM2","SM3")
+rownames(prophets) = "sMAPE of Prophet"
+#colnames(hwr) = c("GAP","GRP","SM1","SM2","SM3")
+rownames(prophetr) = "RMSE of Prophet"
+
+prophets
+prophetr
+```

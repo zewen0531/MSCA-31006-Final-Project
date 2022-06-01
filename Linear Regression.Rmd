@@ -1,0 +1,130 @@
+
+```{r}
+library(xts)
+library(tseries)
+library(forecast)
+library("TSA")
+library(imputeTS)
+library(zoo)
+library(fGarch)
+library(DescTools)
+library(dplyr)
+library(TSPred)
+
+```
+
+
+
+```{r}
+dat <- read.csv('~/Desktop/cleaned_data.csv')
+
+dat <-dat[-1,]
+```
+
+```{r}
+training <- subset(dat,Year <'2010')
+test  <- subset(dat,Year >'2009')
+```
+
+# Sub_metering_1 ~ Total.Active,Total.Reactive,Total.Active+Total.Reactive
+```{r}
+lm <-lm(diff(Total.Sub_metering_1,1) ~ diff(Total.Active,1)  , data = training)
+p <-predict(lm,test)
+accuracy(p,diff(test$Total.Sub_metering_1,1))
+
+sMAPE(diff(test$Total.Sub_metering_1,1),p)
+
+AIC(lm)
+BIC(lm)
+```
+# sub_1 -2
+```{r}
+lm <-lm(diff(Total.Sub_metering_1,1) ~ diff(Total.Reactive,1)  , data = training)
+p <-predict(lm,test)
+accuracy(p,diff(test$Total.Sub_metering_1,1))
+
+sMAPE(diff(test$Total.Sub_metering_1,1),p)
+
+AIC(lm)
+BIC(lm)
+```
+# sub_1 -3
+```{r}
+lm <-lm(diff(Total.Sub_metering_1,1) ~ diff(Total.Active,1)+diff(Total.Reactive,1)  , data = training)
+p <-predict(lm,test)
+accuracy(p,diff(test$Total.Sub_metering_1,1))
+
+sMAPE(diff(test$Total.Sub_metering_1,1),p)
+
+AIC(lm)
+BIC(lm)
+```
+
+
+
+# Sub_metering_2 ~ Total.Active,Total.Reactive,Total.Active+Total.Reactive
+```{r}
+lm <-lm(diff(Total.Sub_metering_2,1) ~ diff(Total.Active,1)  , data = training)
+p <-predict(lm,test)
+accuracy(p,diff(test$Total.Sub_metering_2,1))
+
+sMAPE(diff(test$Total.Sub_metering_2,1),p)
+
+AIC(lm)
+BIC(lm)
+```
+# sub_2 -2
+```{r}
+lm <-lm(diff(Total.Sub_metering_2,1) ~ diff(Total.Reactive,1)  , data = training)
+p <-predict(lm,test)
+accuracy(p,diff(test$Total.Sub_metering_2,1))
+
+sMAPE(diff(test$Total.Sub_metering_2,1),p)
+
+AIC(lm)
+BIC(lm)
+```
+# sub_2 -3
+```{r}
+lm <-lm(diff(Total.Sub_metering_2,1) ~ diff(Total.Active,1)+diff(Total.Reactive,1)  , data = training)
+p <-predict(lm,test)
+accuracy(p,diff(test$Total.Sub_metering_2,1))
+
+sMAPE(diff(test$Total.Sub_metering_2,1),p)
+
+AIC(lm)
+BIC(lm)
+```
+# Sub_metering_3 ~ Total.Active,Total.Reactive,Total.Active+Total.Reactive
+```{r}
+lm <-lm(diff(Total.Sub_metering_3,1) ~ diff(Total.Active,1)  , data = training)
+p <-predict(lm,test)
+accuracy(p,diff(test$Total.Sub_metering_3,1))
+
+sMAPE(diff(test$Total.Sub_metering_3,1),p)
+
+AIC(lm)
+BIC(lm)
+```
+# sub_3 -2
+```{r}
+lm <-lm(diff(Total.Sub_metering_3,1) ~ diff(Total.Reactive,1)  , data = training)
+p <-predict(lm,test)
+accuracy(p,diff(test$Total.Sub_metering_3,1))
+
+sMAPE(diff(test$Total.Sub_metering_3,1),p)
+
+AIC(lm)
+BIC(lm)
+```
+# sub_3 -3
+```{r}
+lm <-lm(diff(Total.Sub_metering_3,1) ~ diff(Total.Active,1)+diff(Total.Reactive,1)  , data = training)
+p <-predict(lm,test)
+accuracy(p,diff(test$Total.Sub_metering_3,1))
+
+sMAPE(diff(test$Total.Sub_metering_3,1),p)
+
+AIC(lm)
+BIC(lm)
+```

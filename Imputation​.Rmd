@@ -1,0 +1,118 @@
+
+```{r}
+library(xts)
+library(tseries)
+library(forecast)
+library("TSA")
+library(imputeTS)
+library(zoo)
+
+```
+
+```{r}
+dat<- read.delim("~/Desktop/household_power_consumption.txt", sep = ";")
+data_clean <- head(dat,10000)
+```
+
+
+```{r}
+dat$Global_active_power[dat$Global_active_power == '?'] <- NA
+dat$Global_reactive_power[dat$Global_reactive_power =="?"] <- NA
+dat$Voltage[dat$Voltage == "?"] <-NA
+dat$Global_intensity[dat$Global_intensity == "?"] <-NA
+dat$Sub_metering_1[dat$Sub_metering_1 =="?"] <- NA
+dat$Sub_metering_2[dat$Sub_metering_2 =="?"] <- NA
+dat$Sub_metering_3[dat$Sub_metering_3 == "?"] <- NA
+```
+
+
+```{r}
+dat$Global_active_power <- as.numeric(dat$Global_active_power)
+dat$Global_reactive_power <- as.numeric(dat$Global_reactive_power)
+dat$Global_intensity <- as.numeric(dat$Global_intensity)
+dat$Voltage <- as.numeric(dat$Voltage)
+dat$Sub_metering_1 <- as.numeric(dat$Sub_metering_1)
+dat$Sub_metering_2 <- as.numeric(dat$Sub_metering_2)
+dat$Sub_metering_3 <- as.numeric(dat$Sub_metering_3)
+```
+
+
+```{r}
+data <-dat[0:10000,]
+```
+
+```{r}
+act_unclean <-data[5000:8000,]$Global_active_power
+react_unclean <-data[5000:8000,]$Global_reactive_power
+
+```
+
+
+### use kalman 
+```{r}
+act <- na_kalman(data$Global_active_power,model = "auto.arima",smooth = TRUE)
+data$Global_active_power <-act
+```
+
+```{r}
+react <- na_kalman(data$Global_reactive_power,model = "auto.arima",smooth = TRUE)
+data$Global_reactive_power <-react
+```
+
+```{r}
+v <- na_kalman(data$Voltage,model = "auto.arima",smooth = TRUE)
+data$Voltage <-v
+```
+
+```{r}
+i <- na_kalman(data$Global_intensity,model = "auto.arima",smooth = TRUE)
+data$Global_intensity <-i
+```
+
+```{r}
+s1 <- na_kalman(data$Sub_metering_1,model = "auto.arima",smooth = TRUE)
+data$Sub_metering_1 <-s1
+```
+
+```{r}
+s2 <- na_kalman(data$Sub_metering_2,model = "auto.arima",smooth = TRUE)
+data$Sub_metering_2 <-s2
+```
+
+```{r}
+s3 <- na_kalman(data$Sub_metering_3,model = "auto.arima",smooth = TRUE)
+data$Sub_metering_3 <-s3
+```
+
+### plot imputation for global active power
+```{r}
+act1 <-data[5000:8000,]$Global_active_power
+
+miss =which(is.na(act_unclean))
+miss1 = act1[miss]
+
+length <- 3001
+empty_vec <- rep(NA, length)
+empty_vec[1841] <- miss1[1]
+empty_vec[1842] <- miss1[2]
+
+
+plot(act1,col = 'blue',pch=20,main = 'Global_active_power',xlab = 'time')
+points(empty_vec,col = 'red',pch=20)
+```
+
+```{r}
+react1 <-data[5000:8000,]$Global_reactive_power
+
+miss =which(is.na(react_unclean))
+miss1 = act1[miss]
+length <- 3001
+empty_vec <- rep(NA, length)
+empty_vec[1841] <- miss1[1]
+empty_vec[1842] <- miss1[2]
+
+
+plot(react1,col = 'blue',pch=20,main = 'Global_reactive_power',xlab = 'time')
+points(empty_vec,col = 'red',pch=20)
+```
+
