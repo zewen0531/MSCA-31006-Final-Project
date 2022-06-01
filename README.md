@@ -16,4 +16,4 @@ Project starts with EDA and regrouping. Since the raw data is grouped by miniute
 - Sub_metering_1: BSTS with global active power as regressor.
 - Sub_metering_2: ARIMA with global active power and reactive power as regressors.
 - Sub_metering_3: ARIMA with global active power as regressor.
-### The best model is evaluated by the RMSE, sMAPE, AICc, and BIC.
+The best model is evaluated by the RMSE, sMAPE, AICc, and BIC.
